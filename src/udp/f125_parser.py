@@ -1,6 +1,5 @@
 """
 F1 25 UDP Telemetry Parser
-Classe para parsear e acessar dados de telemetria do F1 25 Game via UDP
 Formato dos dados: Little Endian, packed structures
 """
 
@@ -36,8 +35,7 @@ class F1TelemetryParser:
     Uso:
         parser = F1TelemetryParser()
         data = parser.parse(udp_packet_bytes)
-        
-        # Acessar dados via dict
+                        
         print(data['header']['sessionUID'])
         print(data['carMotionData'][0]['worldPositionX'])
     """

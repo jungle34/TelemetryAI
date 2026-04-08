@@ -1,5 +1,5 @@
 import threading
-from src.telemetry_UDP import F1TelemetryServer
+from src.udp.telemetry_UDP import F1TelemetryServer
 
 class Telemetry:
     def __init__(self, lock):
@@ -38,4 +38,7 @@ class Api:
     
     def getModule(self, module:str):
         with open(f"views/modules/{module}/index.html", "r", encoding="utf-8") as file:
-            return file.read()
+            return file.read()            
+        
+    def getLapHistory(self):
+        return "Olá"

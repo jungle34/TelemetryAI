@@ -1,13 +1,16 @@
 # LOCAL IMPORTS INTO src/
-import src.events as events
-from src.api import Api
-from src.tools import ArgsHandler
+import src.app.events as events
+from src.app.api import Api
+from src.app.tools import ArgsHandler
 
 # LIBS
 import sys
 import webview
 
 args = ArgsHandler(sys.argv)
+
+if args.exit_before:    
+    exit()    
 
 api = Api()
 window = webview.create_window(

@@ -1,6 +1,6 @@
 import socket
 from datetime import datetime
-from src.f125_parser import F1TelemetryParser
+from src.udp.f125_parser import F1TelemetryParser
 import json, os
 import threading
 
