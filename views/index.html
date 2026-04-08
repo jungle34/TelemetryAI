@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-br" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TelemetryAI</title>
+    <link rel="stylesheet" href="static/css/bootstrap.css">
+    <link rel="stylesheet" href="static/css/style.css">
+
+    <script src="static/js/bootstrap.bundle.js"></script>
+    <script src="static/js/jquery.js"></script>
+    <script src="static/js/main.js"></script>
+</head>
+
+<body >
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">TelemetryAI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" aria-current="page" type="button" onclick="setModule('dashboard')">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="setModule('lap_history')">Histórico</a>
+                    </li>                    
+                    <li class="nav-item">
+                        <a class="nav-link" aria-disabled="true" type="button" onclick="setModule('configuracoes')">Configurações</a>
+                    </li>
+                    <div class="nav-item">
+                        <span class="nav-link">
+                            <span class="badge text-bg-secondary" id="status_telemetry"></span>
+                        </span>
+                    </div>
+                </ul>                
+            </div>
+        </div>        
+    </nav>
+    <div class="container-fluid">
+        <div class="container-fluid rounded mt-4 bg-secondary p-4" id="main-content"></div>
+    </div>
+    <script>
+
+        setTimeout(()=>{
+            console.log("Iniciando");
+            startTelemetryHandler();
+            setInterval(()=>{getTelemetryStatus();}, 250);
+        }, 1000);
+
+    </script>
+</body>
+
+</html>
