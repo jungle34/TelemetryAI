@@ -62,6 +62,7 @@ class F1TelemetryServer:
                     elif parsed_data['header']['packetId'] == 2:
                         lap_num = parsed_data['lapData'][player_idx]['currentLapNum']
                         if lap_num != self.current_lap_num:
+                            self.save_data({"track": self.track_id, "session": session_id, "lap": lap_num}, f"laps/lap_history.jsonl")
                             self.current_lap_num = lap_num
                             
                         dict_to_save['type'] = "LAP"

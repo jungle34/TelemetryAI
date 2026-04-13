@@ -15,16 +15,11 @@
 						<th scope="row" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Data/Hora em que a sessão começou no seu computador">Data/Hora</th>
 					</tr>
 				</thead>
-				<tbody>
+				<tbody id="main_table_body">
 					<!-- <tr>
 						<td colspan="4" class="table-secondary fw-bold text-center">GP de Monza</td>
 					</tr>
-					<tr>
-						<td>JOÃO FERREIRA</td>
-						<td>Pratice 1</td>
-						<td>3</td>
-						<td>2026-04-05 18:15:46</td>
-					</tr>
+					
 					<tr>
 						<td>JOÃO FERREIRA</td>
 						<td>Pratice 1</td>
@@ -34,7 +29,7 @@
 					<tr>
 						<td colspan="4" class="table-secondary fw-bold text-center">GP do Brasil</td>
 					</tr>
-					<tr>
+					<tr c>
 						<td>JOÃO FERREIRA</td>
 						<td>Pratice 1</td>
 						<td>3</td>
@@ -45,25 +40,72 @@
 		</div>
 	</div>
 </div>
+
 <script>
 	var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
 	var tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 </script>
 <script>
 
+	
+
 	makeLapHistory();
 
 	function makeLapHistory() {
 		getLapHistory()
 			.then((response)=>{
-				console.log(response);
-			});
+				response.forEach(element => {
+					console.log(element)
+					let grp_row = `
+						<tr>
+							<td colspan="4" class="table-secondary fw-bold text-center">${element.track_label}</td>
+						</tr>
+					`;
+
+					$(grp_row).appendTo("#main_table_body");
+
+					element.sessions.forEach(item => {
+						let row = `
+							<tr>
+								<td>JOÃO FERREIRA</td>
+								<td>${item.sessionType}</td>
+								<td>${item.laps.length}</td>
+								<td>-
+									<button class="btn btn-primary btn-analisys float-end" type="button" onclick="openLapModule(${element.track_id}, '${item.session_id}')">
+										Analisar Voltas
+									</button>
+								</td>
+							</tr>
+						`;
+
+						$(row).appendTo("#main_table_body");
+					})					
+				});
+			})
+			.finally(()=>{
+				$.session.clear();
+				// $('.btn-analisys').hover(
+				// 	function() {
+				// 		console.log('hover init');
+				// 	},
+				// 	function() {
+				// 		console.log('hover end');
+				// 	}
+				// );
+			})
 	}
 
 	async function getLapHistory() {
 		let response = await window.pywebview.api.getLapHistory();
 
 		return response;
+	}
+
+	function openLapModule(track, session) {
+		$.session.set('TRACK', track);
+		$.session.set('SESSION', session);
+
+		setModule("lap_analisys");
 	}
 
 </script>

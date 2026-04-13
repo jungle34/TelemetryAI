@@ -14,7 +14,7 @@ if args.exit_before:
 
 api = Api()
 window = webview.create_window(
-    "Session Manager",
+    "TelemetryAI",
     "views/index.html",
     js_api=api    
 )

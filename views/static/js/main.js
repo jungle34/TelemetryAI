@@ -19,8 +19,8 @@ async function telemetryStatus() {
 }
 
 
-async function getModule(module) {
-    let response = await window.pywebview.api.getModule(module);
+async function getModule(module, file = 'index.html') {
+    let response = await window.pywebview.api.getModule(module, file);
 
     return response;
 }

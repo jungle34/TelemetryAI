@@ -1,0 +1,131 @@
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="trainingDataLabel">Treinamento do Analista</h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body" id="modal-body">
+    <div class="row mt-2">
+        <div class="col">
+            <select name="track_id" id="track_id" class="form-control">
+                <option value="" selected disabled hidden>Selecione uma opção...</option>
+            </select>
+        </div>
+    </div>
+    <hr>
+    <form id="form_sessions_to_training" class="row mt-4">
+        <div class="col" id="sessions_area">
+
+
+        </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button> -->
+    <button type="button" class="btn btn-primary" onclick="executeDataTraining()">Treinar Analista</button>
+</div>
+
+<script>
+
+    makeTracksSelect();
+
+    async function getTracks() {
+        let response = await window.pywebview.api.getTracks();
+
+        return response;
+    }
+
+    function makeTracksSelect() {
+        getTracks()
+            .then((response) => {
+                response.forEach(element => {
+                    let _opt = $('<option />').val(element.track_id).text(element.track_label);
+
+                    $(_opt).appendTo('#track_id');
+                });
+            })
+    }
+
+    $('#track_id').on("change", function () {
+        makeTrackSummary($(this).val());
+    });
+
+    function makeTrackSummary(track) {
+        getTrackSummary(track)
+            .then((response) => {
+                $('#sessions_area').html("");
+                response.forEach((element, i) => {
+                    let check_item = `
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="${element.session_id}" id="session_${i}" name="session_${i}" ${element.total_laps < 4 ? "disabled" : ""}>
+                            <label class="form-check-label" for="checkDefault">
+                                ${element.sessionType} - ${element.weather} - ${element.total_laps} Voltas | ${element.datetime}
+                            </label>
+                        </div>
+                    `;
+
+                    $(check_item).appendTo('#sessions_area');
+
+                });
+            })
+            .finally(() => {
+                $('<div>')
+                    .addClass('form-text mt-4')
+                    .text('Só é possível selecionar sessões com mais de 5 voltas')
+                    .appendTo('#sessions_area')
+            })
+    }
+
+    async function getTrackSummary(track) {
+        let response = await window.pywebview.api.getTrackSummary(track);
+
+        return response;
+    }
+
+    function loadingSpinner() {
+		return `
+			<div class="text-center p-5">
+				<div class="spinner-border text-primary" role="status">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<div class="mt-4">
+					Treinando analista
+				</span>
+			</div>
+		`
+	}
+
+	function successIcon() {
+		return `
+			<div class="text-center p-5">
+				<div class="text-success" style="font-size: 64px;margin-bottom: -35px;margin-top: -25px;">
+					<i class="bi bi-check"></i>
+				</div>
+				<div class="mt-4">
+					Treino executado com sucesso!
+				</span>
+			</div>
+		`
+	}
+
+	function executeDataTraining() {
+		let form = $('#form_sessions_to_training').serialize();
+		$('#modal-body').html(loadingSpinner);
+
+		setModelTraining()
+			.then(async ()=>{
+				$('#modal-body').html(successIcon);
+
+				await delay(2000);
+			})
+			.finally(()=>{
+				$('#modal-body').html("");
+				modal.hide();
+			});
+	}
+
+	async function setModelTraining() {
+        let response = await window.pywebview.api.setModelTraining();
+
+        return response;
+    }    
+
+</script>

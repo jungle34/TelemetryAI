@@ -1,0 +1,38 @@
+<nav aria-label="breadcrumb">
+	<ol class="breadcrumb">
+		<li class="breadcrumb-item active" aria-current="page">Analise de Volta</li>
+	</ol>
+</nav>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col" id="lap_btn_area">
+            <!-- <button type="button" class="btn btn-light">Volta 1</button> -->
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    getModuleParams();
+    
+    function getModuleParams() {
+        let track = $.session.get('TRACK');
+        let session = $.session.get('SESSION');
+
+        getLapsToAnalisys(track, session)
+            .then((response)=>{
+                response.laps.forEach(element => {
+                    let lap_button = `<button type="button" class="btn btn-light me-1">${element.replace("Lap_", "Volta ")}</button>`;
+                    $(lap_button).appendTo("#lap_btn_area");
+                });
+            })
+    }
+
+    async function getLapsToAnalisys(track, session) {
+        let response = await window.pywebview.api.getLaps(track, session);
+
+        return response;
+    }
+
+</script>

@@ -14,8 +14,7 @@ class F125_TelemetryConsolidated:
         self.sanitazed_data = {}        
             
     def load_json_lines(self, json_path:str, lap:str) -> list:    
-        with open(json_path, 
-        "r", encoding="utf-8") as f:
+        with open(json_path, "r", encoding="utf-8") as f:
             for l in f:
                 row = json.loads(l)
                 frame_id = str(row['frame_id'])
@@ -114,8 +113,5 @@ class F125_TelemetryConsolidated:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         os.makedirs(parquet_path, exist_ok=True)
         self.saveParquet(consolidated, f"{parquet_path}/telemetry_{timestamp}.parquet")
-            
-            
-basic_consolidated = F125_TelemetryConsolidated(track="Track_11", session=11607642657655656587)
-
-basic_consolidated.getBasicConsolidated()
+        
+        return f"telemetry_{timestamp}.parquet"
