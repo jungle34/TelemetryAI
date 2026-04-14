@@ -6,6 +6,9 @@ from pathlib import Path
 from src.udp.telemetry_UDP import F1TelemetryServer
 from src.app.tools import TrackTranslator, SessionTypeTranslator, WeatherTranslator
 
+from analisys.GroupData import F125_TelemetryConsolidated
+from analisys.John import John
+
 class Telemetry:
     def __init__(self, lock):
         self.telemetry_server = None
@@ -27,6 +30,8 @@ class Api:
         self.track_translator = TrackTranslator()
         self.session_type_translator = SessionTypeTranslator()
         self.weather_translator = WeatherTranslator()
+        
+        self.parquet_json_path = "analisys/sanitazed_data/"
         
     def getTelemetryUdpStatus(self):
         if self.telemetry_thread and self.telemetry_thread.is_alive():            
@@ -137,13 +142,33 @@ class Api:
         sessions = Path(f"laps/{track}")
         sessions = [p.name for p in sessions.iterdir() if p.is_dir()]
         
-        return [self.getSessionData(session, track) for session in sessions]
+        return [self.getSessionData(session, track) for session in sessions]        
     
-    def setModelTraining(self):
-        time.sleep(2)
-        # Aplicar algoritimo de treinamento do ML aqui e salvar caminho dos arquivos em um json na mesma pasta dos arquivos do treinamento e sanitizados
-        return "Concluído"
+    def getSessionParquet(self, data):
+        group_data = F125_TelemetryConsolidated(track=data['track'], session=data['session'])
+                
+        return group_data.getBasicConsolidated()
+    
+    def setModelTraining(self, track, session):        
+        try:
+            analist = John(track, session)
+            return {"success": True}
+        except Exception as e:                        
+            raise Exception(str(e))
+    
+    def getSanitazeSummary(self):        
+        data = []
+        with open(f"analisys/sanitazed_data/summary.jsonl", 'r', encoding='utf-8') as file:
+            for line in file:
+                row = json.loads(line)
+                data.append({
+                    "track": {"id": row['track'], "label": self.track_translator.translate(int(row['track'].replace("Track_", "")))},
+                    "session": self.getSessionData(row['session'], row['track']),
+                    "sanitaze_summary": row
+                })
+                
+        return data
     
     
 # api = Api()
-# api.getLaps(13, '2236946438891290374')
+# api.getLaps(13, '2236946438891290374') 

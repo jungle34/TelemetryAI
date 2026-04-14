@@ -23,33 +23,14 @@
 									<th>Circuito</th>
 									<th>Voltas</th>
 									<th>Data/Hora</th>
-									<th>										
+									<th class="text-center">										
 										<button class="btn btn-primary btn-sm" type="button" onclick="triggerModal()">
 											Criar Treinamento de dados
 										</button>
 									</th>
 								</tr>
 							</thead>
-							<tbody>
-								<tr>
-									<td>Suzuka</td>
-									<td>27 Voltas</td>
-									<td>13/04/2026 17:50:43</td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Suzuka</td>
-									<td>27 Voltas</td>
-									<td>13/04/2026 17:50:43</td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Suzuka</td>
-									<td>27 Voltas</td>
-									<td>13/04/2026 17:50:43</td>
-									<td></td>
-								</tr>
-							</tbody>
+							<tbody id="trained_data"></tbody>
 						</table>
 
 					</div>
@@ -99,7 +80,10 @@
     </div>
   </div>
 </div>
+
 <script>
+
+	makeSanitazeSummary();
 
 	var trainingModal = document.querySelector('#trainingData');
 	var modal = new bootstrap.Modal(trainingModal);
@@ -121,7 +105,7 @@
 			.finally(()=>{
 				modal.show();
 			});
-	}	
+	}
 
 	trainingModal.addEventListener('show.bs.modal', event => {		
 		console.log("Modal Abriu")
@@ -129,6 +113,91 @@
 
 	trainingModal.addEventListener('hidden.bs.modal', event => {
 		setModule("configuracoes")
-	}, { once: true });	
+	}, { once: true });
+
+	function makeSanitazeSummary() {
+		getSanitazeSummary()
+			.then((response)=>{
+				response.forEach(element => {
+					let row = $('<tr />');
+
+					$('<td />').text(element.track.label).appendTo(row);
+					$('<td />').text(`${element.session.total_laps} Voltas`).appendTo(row);
+					$('<td />').text(element.session.datetime).appendTo(row);
+					$('<td />')
+						.addClass("text-center")
+						.html(`
+							<button class="btn btn-danger btn-sm" type="button" onclick="deleteTraining('${element.track.id}', '${element.session.session_id}')">
+								<i class="bi bi-trash"></i>
+							</button>
+						`)
+						.appendTo(row);
+
+					$(row).appendTo("#trained_data");
+				});
+			});
+	}
+
+	function deleteTraining(track, session) {
+		console.log(track, session);
+	}
+
+	async function getSanitazeSummary() {
+        return await window.pywebview.api.getSanitazeSummary();
+    }
+
+	// <td>Suzuka</td>
+	// <td>27 Voltas</td>
+	// <td>13/04/2026 17:50:43</td>
+	// <td></td>
+	// [
+	// 	{
+	// 		"track": {
+	// 			"id": "Track_13",
+	// 			"label": "Suzuka"
+	// 		},
+	// 		"session": {
+	// 			"session_id": "13955196505268824569",
+	// 			"datetime": "2026-04-09 22:57:35",
+	// 			"total_laps": 27,
+	// 			"sessionType": "Race",
+	// 			"airTemperature": 18,
+	// 			"trackTemperature": 24,
+	// 			"weather": "Chuva leve"
+	// 		},
+	// 		"sanitaze_summary": {
+	// 			"track": "Track_13",
+	// 			"session": "13955196505268824569",
+	// 			"parquet_path": {
+	// 				"parquet": "telemetry_2026-04-14_11-42-33.parquet",
+	// 				"path": "analisys/sanitazed_data/Track_13/13955196505268824569"
+	// 			}
+	// 		}
+	// 	},
+	// 	{
+	// 		"track": {
+	// 			"id": "Track_13",
+	// 			"label": "Suzuka"
+	// 		},
+	// 		"session": {
+	// 			"session_id": "2236946438891290374",
+	// 			"datetime": "2026-04-09 22:57:35",
+	// 			"total_laps": 4,
+	// 			"sessionType": "Qualifying 1",
+	// 			"airTemperature": 17,
+	// 			"trackTemperature": 25,
+	// 			"weather": "Poucas nuvens"
+	// 		},
+	// 		"sanitaze_summary": {
+	// 			"track": "Track_13",
+	// 			"session": "2236946438891290374",
+	// 			"parquet_path": {
+	// 				"parquet": "telemetry_2026-04-14_12-14-14.parquet",
+	// 				"path": "analisys/sanitazed_data/Track_13/2236946438891290374"
+	// 			}
+	// 		}
+	// 	}
+	// ]
+
 
 </script>

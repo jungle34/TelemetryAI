@@ -3,18 +3,24 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 <div class="modal-body" id="modal-body">
-    <div class="row mt-2">
-        <div class="col">
-            <select name="track_id" id="track_id" class="form-control">
-                <option value="" selected disabled hidden>Selecione uma opção...</option>
-            </select>
-        </div>
-    </div>
-    <hr>
-    <form id="form_sessions_to_training" class="row mt-4">
-        <div class="col" id="sessions_area">
-
-
+    <form id="form_sessions_to_training" class="row">
+        <div class="row mt-2">
+            <div class="col">
+                <select name="track_id" id="track_id" class="form-control">
+                    <option value="" selected disabled hidden>Selecione uma opção...</option>
+                </select>
+            </div>
+        </div>        
+        <div class="row mt-3">
+            <div class="col">
+                <div class="alert alert-warning d-none" id="alert-modal" role="alert"></div>
+            </div>
+        </div>        
+    
+        <div class="row mt-1">
+            <div class="col">
+                <div class="col" id="sessions_area"></div>
+            </div>
         </div>
     </form>
 </div>
@@ -48,6 +54,15 @@
         makeTrackSummary($(this).val());
     });
 
+    function setAlert(msg) {
+        let alert = $('#alert-modal');        
+        $(alert).text(msg).removeClass("d-none");
+
+        setTimeout(()=>{
+            if (!$(alert).hasClass("d-none")) $(alert).addClass("d-none");            
+        }, 5000);
+    }    
+
     function makeTrackSummary(track) {
         getTrackSummary(track)
             .then((response) => {
@@ -55,7 +70,7 @@
                 response.forEach((element, i) => {
                     let check_item = `
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="${element.session_id}" id="session_${i}" name="session_${i}" ${element.total_laps < 4 ? "disabled" : ""}>
+                            <input class="form-check-input" type="radio" value="${element.session_id}" id="session_${i}" name="session" ${element.total_laps < 4 ? "disabled" : ""}>
                             <label class="form-check-label" for="checkDefault">
                                 ${element.sessionType} - ${element.weather} - ${element.total_laps} Voltas | ${element.datetime}
                             </label>
@@ -69,7 +84,7 @@
             .finally(() => {
                 $('<div>')
                     .addClass('form-text mt-4')
-                    .text('Só é possível selecionar sessões com mais de 5 voltas')
+                    .text('Só é possível selecionar sessões com mais de 4 voltas')
                     .appendTo('#sessions_area')
             })
     }
@@ -106,26 +121,83 @@
 		`
 	}
 
+    function warningIcon() {
+        return `
+			<div class="text-center p-5">
+				<div class="text-warning" style="font-size: 64px;margin-bottom: -35px;margin-top: -25px;">
+					<i class="bi bi-exclamation-octagon"></i>
+				</div>
+				<div class="mt-4">
+					Dados de treinamento da sessão já foram gerados
+				</span>
+			</div>
+		`
+    }
+
+    function makeRequestData(raw_form) {
+        let track_id = "";
+        let session = "";
+        
+        $.map(raw_form, (item)=>{            
+            if (item.name === "track_id"){
+                track_id = item.value;
+            } else {
+                session = item.value
+            }
+        });
+
+        return {"track": track_id, "session": session}
+    }
+
 	function executeDataTraining() {
-		let form = $('#form_sessions_to_training').serialize();
+		let form = $('#form_sessions_to_training').serializeArray();
 		$('#modal-body').html(loadingSpinner);
 
-		setModelTraining()
-			.then(async ()=>{
-				$('#modal-body').html(successIcon);
+        let request_data = makeRequestData(form);        
 
-				await delay(2000);
-			})
-			.finally(()=>{
-				$('#modal-body').html("");
-				modal.hide();
-			});
+        if (request_data.session === "") {
+            setAlert("Selecione uma sessão com mais de 5 voltas");
+
+            return;
+        }else {
+            if (!$('#alert-modal').hasClass("d-none")) $('#alert-modal').addClass("d-none");
+        }
+
+        getSessionParquet(request_data)
+            .then(async (response)=>{                
+                if (response == false) {
+                    $('#modal-body').html(warningIcon);
+                    await delay(5000);
+                    
+                    $('#modal-body').html("");
+                    modal.hide();
+
+                    return;
+                }
+
+                setModelTraining(request_data.track, request_data.session)
+                    .then(async ()=>{                
+                        $('#modal-body').html(successIcon);
+
+                        await delay(2000);
+                    })
+                    .finally(()=>{
+                        $('#modal-body').html("");
+                        modal.hide();
+                    })
+                    .catch((error) => {
+                        setAlert("Error:", error);
+                    });
+            })
+            
 	}
 
-	async function setModelTraining() {
-        let response = await window.pywebview.api.setModelTraining();
+    async function getSessionParquet(request) {
+        return await window.pywebview.api.getSessionParquet(request);        
+    }
 
-        return response;
-    }    
-
+	async function setModelTraining(track, session) {
+        return await window.pywebview.api.setModelTraining(track, session);        
+    }
+    
 </script>
