@@ -21,6 +21,7 @@
 							<thead>
 								<tr>
 									<th>Circuito</th>
+									<th>Tipo</th>
 									<th>Voltas</th>
 									<th>Data/Hora</th>
 									<th class="text-center">										
@@ -107,9 +108,9 @@
 			});
 	}
 
-	trainingModal.addEventListener('show.bs.modal', event => {		
-		console.log("Modal Abriu")
-	}, { once: true });
+	// trainingModal.addEventListener('show.bs.modal', event => {		
+	// 	console.log("Modal Abriu")
+	// }, { once: true });
 
 	trainingModal.addEventListener('hidden.bs.modal', event => {
 		setModule("configuracoes")
@@ -118,10 +119,17 @@
 	function makeSanitazeSummary() {
 		getSanitazeSummary()
 			.then((response)=>{
-				response.forEach(element => {
+				console.log(response.length == 0)
+				if (response.length == 0) {
+					let empty_row = $('<tr />').addClass("text-center");
+					$('<td />').html(`Nenhuma sessão foi usada pra treinamento`).attr("colspan", 5).appendTo(empty_row);
+					$(empty_row).appendTo("#trained_data");
+				}
+				response.forEach(element => {					
 					let row = $('<tr />');
 
 					$('<td />').text(element.track.label).appendTo(row);
+					$('<td />').text(element.session.sessionType).appendTo(row);
 					$('<td />').text(`${element.session.total_laps} Voltas`).appendTo(row);
 					$('<td />').text(element.session.datetime).appendTo(row);
 					$('<td />')
@@ -145,59 +153,5 @@
 	async function getSanitazeSummary() {
         return await window.pywebview.api.getSanitazeSummary();
     }
-
-	// <td>Suzuka</td>
-	// <td>27 Voltas</td>
-	// <td>13/04/2026 17:50:43</td>
-	// <td></td>
-	// [
-	// 	{
-	// 		"track": {
-	// 			"id": "Track_13",
-	// 			"label": "Suzuka"
-	// 		},
-	// 		"session": {
-	// 			"session_id": "13955196505268824569",
-	// 			"datetime": "2026-04-09 22:57:35",
-	// 			"total_laps": 27,
-	// 			"sessionType": "Race",
-	// 			"airTemperature": 18,
-	// 			"trackTemperature": 24,
-	// 			"weather": "Chuva leve"
-	// 		},
-	// 		"sanitaze_summary": {
-	// 			"track": "Track_13",
-	// 			"session": "13955196505268824569",
-	// 			"parquet_path": {
-	// 				"parquet": "telemetry_2026-04-14_11-42-33.parquet",
-	// 				"path": "analisys/sanitazed_data/Track_13/13955196505268824569"
-	// 			}
-	// 		}
-	// 	},
-	// 	{
-	// 		"track": {
-	// 			"id": "Track_13",
-	// 			"label": "Suzuka"
-	// 		},
-	// 		"session": {
-	// 			"session_id": "2236946438891290374",
-	// 			"datetime": "2026-04-09 22:57:35",
-	// 			"total_laps": 4,
-	// 			"sessionType": "Qualifying 1",
-	// 			"airTemperature": 17,
-	// 			"trackTemperature": 25,
-	// 			"weather": "Poucas nuvens"
-	// 		},
-	// 		"sanitaze_summary": {
-	// 			"track": "Track_13",
-	// 			"session": "2236946438891290374",
-	// 			"parquet_path": {
-	// 				"parquet": "telemetry_2026-04-14_12-14-14.parquet",
-	// 				"path": "analisys/sanitazed_data/Track_13/2236946438891290374"
-	// 			}
-	// 		}
-	// 	}
-	// ]
-
 
 </script>

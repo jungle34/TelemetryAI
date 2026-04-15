@@ -16,6 +16,7 @@ class John:
     def __init__(self, track:str, session:str, num_laps:int = 3):
         self.track = track
         self.session = session
+        self.num_laps = num_laps
         
         self.tyre_rolling_range = [5, 10, 15, 20, 25]
 
@@ -25,98 +26,79 @@ class John:
         self.models_path = f"analisys/models/{track}/{session}"
         self.df = None
         self.benchmark_laps = None
-
-        try:
-            self.loadReferenceLaps(df=self.df, num_laps=num_laps)
-        except Exception as e:
-            raise RuntimeError(f"Error loading reference laps: {e}")
-
-        try:
-            self.X_train, self.X_test, self.y_train, self.y_test = self.splitTestTrain()
-        except Exception as e:
-            raise RuntimeError(f"Error splitting train/test: {e}")
-
-        try:
-            self.normalizedFeatures()
-        except Exception as e:
-            raise RuntimeError(f"Error normalizing features: {e}")
-
-        try:
-            self.applyRegressor()
-        except Exception as e:
-            raise RuntimeError(f"Error applying regressor: {e}")
-
-        try:
-            self.setFeatureImportance()
-        except Exception as e:
-            raise RuntimeError(f"Error setting feature importance: {e}")
-
-        try:
-            self.saveTrainedModels()
-        except Exception as e:
-            raise RuntimeError(f"Error saving trained models: {e}")
+        self.df_benchmark = None
+        
+        self.parquet_path = self.getParquetPath()
+        
+    def getParquetPath(self):
+        with open(f"analisys/sanitazed_data/summary.jsonl", "r") as f:
+            for line in f:
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                
+                if obj['track'] == self.track and obj['session'] == self.session:
+                    return f"{obj['parquet_path']['parquet']}"
         
     def loadRawParquet(self):
-        self.df = pd.read_parquet(f"analisys/sanitazed_data/{self.track}/{self.session}/{self.parquet_path}")
-        self.df = self.derivedFeatures(self.df)
+        self.df = pd.read_parquet(f"analisys/sanitazed_data/{self.track}/{self.session}/{self.parquet_path}")        
         
-    def derivedFeatures(self, df):
-        df = df.sort_values(['lap', 'lapDistance']).reset_index(drop=True)
+    def derivedFeatures(self):
+        self.df = self.df.sort_values(['lap', 'lapDistance']).reset_index(drop=True)
         
-        df["avg_tyre_wear"] = df[self.tyre_wear_columns].mean(axis=1)
+        self.df["avg_tyre_wear"] = self.df[self.tyre_wear_columns].mean(axis=1)
 
         diff_tyre_wear_columns = []
         for i in self.tyre_rolling_range:
-            df[f"avg_diff_tyre_wear_{i}"] = df["avg_tyre_wear"] - df["avg_tyre_wear"].rolling(window=i).mean().fillna(0)
+            self.df[f"avg_diff_tyre_wear_{i}"] = self.df["avg_tyre_wear"] - self.df["avg_tyre_wear"].rolling(window=i).mean().fillna(0)
             diff_tyre_wear_columns.append(f"avg_diff_tyre_wear_{i}")    
             
         if len(diff_tyre_wear_columns) > 0:
-            df["avg_diff_tyre_wear"] = df[diff_tyre_wear_columns].mean(axis=1)
+            self.df["avg_diff_tyre_wear"] = self.df[diff_tyre_wear_columns].mean(axis=1)
 
-        df["avg_tyre_surface_temp"] = df[self.tyre_surface_temp_columns].mean(axis=1)
+        self.df["avg_tyre_surface_temp"] = self.df[self.tyre_surface_temp_columns].mean(axis=1)
 
         diff_tyre_surface_temp_columns = []
         for i in self.tyre_rolling_range:
-            df[f"avg_diff_tyre_surface_temp_{i}"] = df["avg_tyre_surface_temp"] - df["avg_tyre_surface_temp"].rolling(window=i).mean().fillna(0)
+            self.df[f"avg_diff_tyre_surface_temp_{i}"] = self.df["avg_tyre_surface_temp"] - self.df["avg_tyre_surface_temp"].rolling(window=i).mean().fillna(0)
             diff_tyre_surface_temp_columns.append(f"avg_diff_tyre_surface_temp_{i}")
             
         if len(diff_tyre_surface_temp_columns) > 0:
-            df["avg_diff_tyre_surface_temp"] = df[diff_tyre_surface_temp_columns].mean(axis=1)    
+            self.df["avg_diff_tyre_surface_temp"] = self.df[diff_tyre_surface_temp_columns].mean(axis=1)    
             
-        df["is_corner"] = (
-            (df["steer"].abs() > 0.5) |
-            (df["gForceLateral"].abs() > 2.0)
+        self.df["is_corner"] = (
+            (self.df["steer"].abs() > 0.5) |
+            (self.df["gForceLateral"].abs() > 2.0)
         )        
 
-        df["steer_filtered"] = df["steer"].where(df["steer"].abs() > 0.1, 0)
-        df["steer_sign"] = np.sign(df["steer_filtered"])
+        self.df["steer_filtered"] = self.df["steer"].where(self.df["steer"].abs() > 0.1, 0)
+        self.df["steer_sign"] = np.sign(self.df["steer_filtered"])
 
-        df["direction_change"] = df["steer_sign"] != df["steer_sign"].shift(1)
+        self.df["direction_change"] = self.df["steer_sign"] != self.df["steer_sign"].shift(1)
 
-        df["direction_change"] = (
-            (df["gForceLateral"] * df["gForceLateral"].shift(1)) < 0
+        self.df["direction_change"] = (
+            (self.df["gForceLateral"] * self.df["gForceLateral"].shift(1)) < 0
         )
 
-        df["corner_start"] = (
-            (df["is_corner"]) & (
-                (~df["is_corner"].shift(1, fill_value=False)) |  # entrou na curva
-                (df["direction_change"])                         # ou mudou direção (slalom)
+        self.df["corner_start"] = (
+            (self.df["is_corner"]) & (
+                (~self.df["is_corner"].shift(1, fill_value=False)) |  # entrou na curva
+                (self.df["direction_change"])                         # ou mudou direção (slalom)
             )
         )
 
-        df = df.drop(columns=["direction_change", "is_corner"] + diff_tyre_surface_temp_columns + diff_tyre_wear_columns)
+        self.df = self.df.drop(columns=["direction_change", "is_corner"] + diff_tyre_surface_temp_columns + diff_tyre_wear_columns)
 
-        df["corner_id"] = df["corner_start"].cumsum()
+        self.df["corner_id"] = self.df["corner_start"].cumsum()
 
-        df['power_efficiency'] = df['speed'] / (df['engineRPM'] + 1)
+        self.df['power_efficiency'] = self.df['speed'] / (self.df['engineRPM'] + 1)
 
-        df['lap_progress'] = df.groupby('lap').cumcount() / df.groupby('lap')['lap'].transform('count')
-
-        return df
-    
-    def loadReferenceLaps(self, df, num_laps:int = 3):
-        voltas_no_pit = df[df['pitStatus'] == 1]['lap'].unique()
-        df_filtrado = df[~df['lap'].isin(voltas_no_pit)]
+        self.df['lap_progress'] = self.df.groupby('lap').cumcount() / self.df.groupby('lap')['lap'].transform('count')        
+        
+    def loadReferenceLaps(self, num_laps:int = 3):
+        voltas_no_pit = self.df[self.df['pitStatus'] == 1]['lap'].unique()
+        df_filtrado = self.df[~self.df['lap'].isin(voltas_no_pit)]
 
         self.lap_stats = df_filtrado.groupby('lap').agg({
             'speed': ['mean', 'std'],
@@ -173,7 +155,7 @@ class John:
         self.benchmark_laps = self.lap_stats.nlargest(top_n, 'final_score')['lap'].values
         
     def splitTestTrain(self):
-        df_benchmark = self.df[self.df['lap'].isin(self.benchmark_laps)].copy()
+        self.df_benchmark = self.df[self.df['lap'].isin(self.benchmark_laps)].copy()
                 
         self.feature_columns = [
             'worldPositionX', 'worldPositionZ', 'lap_progress', 'corner_id',
@@ -191,8 +173,8 @@ class John:
             'throttle', 'brake', 'steer'
         ]
         
-        X = df_benchmark[self.feature_columns].copy()
-        y = df_benchmark[self.target_columns].copy()
+        X = self.df_benchmark[self.feature_columns].copy()
+        y = self.df_benchmark[self.target_columns].copy()
         
         X = X.fillna(X.mean())
         y = y.fillna(0)        
@@ -254,6 +236,58 @@ class John:
         }
         
         with open(f"{models_path}/model_config.json", 'w') as f:
-            json.dump(config, f, indent=2)        
+            json.dump(config, f, indent=2)
         
-        self.lap_stats.to_csv(f"{models_path}/lap_statistics.csv", index=False)        
+        self.lap_stats.to_csv(f"{models_path}/lap_statistics.csv", index=False)
+        
+        cols = list(dict.fromkeys(
+            self.feature_columns + self.target_columns + ['lap']
+        ))
+
+        df_benchmark_export = self.df_benchmark[cols].copy()
+        df_benchmark_export.to_parquet(f"{models_path}/benchmark_reference.parquet", index=False)
+        
+    def runAll(self):
+        try:
+            self.loadRawParquet()
+        except Exception as e:
+            raise RuntimeError(f"Error loading raw parquet: {e}")
+        
+        try:
+            self.derivedFeatures()
+        except Exception as e:
+            raise RuntimeError(f"Error derived features: {e}")
+        
+        try:
+            self.loadReferenceLaps(num_laps=self.num_laps)
+        except Exception as e:
+            raise RuntimeError(f"Error loading reference laps: {e}")
+        
+        try:
+            self.X_train, self.X_test, self.y_train, self.y_test = self.splitTestTrain()
+        except Exception as e:
+            raise RuntimeError(f"Error splitting train/test: {e}")
+        
+        try:
+            self.normalizedFeatures()
+        except Exception as e:
+            raise RuntimeError(f"Error normalizing features: {e}")
+        
+        try:
+            self.applyRegressor()
+        except Exception as e:
+            raise RuntimeError(f"Error applying regressor: {e}")
+        
+        try:
+            self.setFeatureImportance()
+        except Exception as e:
+            raise RuntimeError(f"Error setting feature importance: {e}")
+        
+        try:
+            self.saveTrainedModels()
+        except Exception as e:
+            raise RuntimeError(f"Error saving trained models: {e}")
+        
+        return {"success": True}
+        
+# john = John("Track_3", "2389544128006477957")

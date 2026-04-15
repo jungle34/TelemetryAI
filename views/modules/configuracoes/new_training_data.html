@@ -101,8 +101,8 @@
 				<div class="spinner-border text-primary" role="status">
 					<span class="visually-hidden">Loading...</span>
 				</div>
-				<div class="mt-4">
-					Treinando analista
+				<div class="mt-4" id="spinner_label">
+					Organizando e limpando os dados (1/2)
 				</span>
 			</div>
 		`
@@ -175,9 +175,15 @@
                     return;
                 }
 
+                $("#spinner_label").html("Aprendendo com os dados (2/2)");
+
                 setModelTraining(request_data.track, request_data.session)
-                    .then(async ()=>{                
-                        $('#modal-body').html(successIcon);
+                    .then(async (response)=>{
+                        if (response.success == true) {
+                            $('#modal-body').html(successIcon);
+                        } else {
+                            throw new Error("Erro ao gerar treino");
+                        }
 
                         await delay(2000);
                     })
@@ -188,8 +194,7 @@
                     .catch((error) => {
                         setAlert("Error:", error);
                     });
-            })
-            
+            })            
 	}
 
     async function getSessionParquet(request) {

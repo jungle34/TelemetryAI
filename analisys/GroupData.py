@@ -6,9 +6,10 @@ from pathlib import Path
 from datetime import datetime
 
 class F125_TelemetryConsolidated:
-    def __init__(self, track, session):
+    def __init__(self, track, session, is_training:bool = True):
         self.session_id = session
-        self.track = track        
+        self.track = track
+        self.is_training = is_training
         self.path = Path(f"laps/{self.track}/{self.session_id}")
         # pastas = [p for p in caminho.iterdir() if p.is_dir()]
         self.sanitazed_data = {}        
@@ -131,10 +132,13 @@ class F125_TelemetryConsolidated:
             parquet_path = f"analisys/sanitazed_data/{self.track}/{self.session_id}"
             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
             os.makedirs(parquet_path, exist_ok=True)
+            
+            
             self.saveParquet(consolidated, f"{parquet_path}/telemetry_{timestamp}.parquet")
             
             out_data = {"parquet": f"telemetry_{timestamp}.parquet", "path": parquet_path}
-            self.save_data({"track": self.track, "session": self.session_id, "parquet_path": out_data}, "analisys/sanitazed_data/summary.jsonl")
+            if self.is_training:
+                self.save_data({"track": self.track, "session": self.session_id, "parquet_path": out_data}, "analisys/sanitazed_data/summary.jsonl")
             
             return out_data
         else:

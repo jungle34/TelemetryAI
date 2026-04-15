@@ -1,12 +1,60 @@
+<style>
+    .relatorio-box {
+        white-space: pre-wrap;
+        font-family: monospace;
+        /* background: #111;
+        color: #0f0; */
+        /* padding: 15px;
+        border-radius: 8px; */
+    }
+</style>
 <nav aria-label="breadcrumb">
-	<ol class="breadcrumb">
-		<li class="breadcrumb-item active" aria-current="page">Analise de Volta</li>
-	</ol>
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">Analise de Volta</li>
+    </ol>
 </nav>
 <div class="container-fluid">
     <div class="row">
-        <div class="col" id="lap_btn_area">
+        <div class="col float-start" id="lap_btn_area">
             <!-- <button type="button" class="btn btn-light">Volta 1</button> -->
+        </div>
+        <div class="col float-end">
+            <select class="form-control" name="training_session" id="training_session">
+                <option selected disabled hidden>Selecione um treinamento de dados para usar na analise...</option>
+            </select>
+        </div>
+    </div>
+</div>
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col">
+            <img id="img-lap-comparison" class="img-fluid" src="" alt="ERRO">
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-6 d-flex align-items-center justify-content-center">
+            <img id="img-lap-trace" 
+                class="w-100 h-100" 
+                style="object-fit: contain;">
+        </div>
+        <div class="col-6 d-flex align-items-center justify-content-center">
+            <img id="img-performance-radar" 
+                class="w-100 h-100" 
+                style="object-fit: contain;">
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col">
+            <div id="text_feedback" class="relatorio-box"></div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+
+        <div class="toast-body" id="toast-body">
+            <!-- Selecione uma sessão treinada para executar a analise da volta selecionada -->
         </div>
     </div>
 </div>
@@ -15,24 +63,87 @@
 <script>
 
     getModuleParams();
-    
+
     function getModuleParams() {
         let track = $.session.get('TRACK');
         let session = $.session.get('SESSION');
 
+        getTrackTrainings(track)
+            .then((response) => {
+                response.forEach(element => {
+                    let opt_text = `${element.track_label} - ${element.session.sessionType} | ${element.session.total_laps} Voltas`;
+                    console.log(opt_text)
+                    let opt = $('<option />').val(element.session_id).text(opt_text)
+
+                    $(opt).appendTo('#training_session');
+                });
+            })
+
         getLapsToAnalisys(track, session)
-            .then((response)=>{
+            .then((response) => {
                 response.laps.forEach(element => {
-                    let lap_button = `<button type="button" class="btn btn-light me-1">${element.replace("Lap_", "Volta ")}</button>`;
+                    let lap_button = `<button type="button" class="btn btn-light me-1" onclick="getLapAnalisys('${element}')">${element.replace("Lap_", "Volta ")}</button>`;
                     $(lap_button).appendTo("#lap_btn_area");
                 });
             })
     }
 
-    async function getLapsToAnalisys(track, session) {
-        let response = await window.pywebview.api.getLaps(track, session);
+    function getLapAnalisys(lap) {
+        let selected_training = $('#training_session').val();
+        if (selected_training == null) {
+            showToast("Selecione uma sessão treinada para executar a analise da volta selecionada", 'text-bg-danger')
+        } else {
+            makeLapAnalisys(`Track_${$.session.get('TRACK')}`, selected_training, $.session.get('SESSION'), lap.replace("Lap_", ""))
+                .then((response) => {
+                    if (response.success) {
+                        showToast("Volta analisada com sucesso!", 'text-bg-success')
+                        loadAnalisysData(`Track_${$.session.get('TRACK')}`, $.session.get('SESSION'), lap)
+                            .then((response) => {
+                                let base64_lap_comparison = response.lap_comparison;
+                                document.getElementById("img-lap-comparison").src = `data:image/png;base64,${base64_lap_comparison}`;
 
-        return response;
+                                let base64_lap_trace = response.lap_trace;
+                                document.getElementById("img-lap-trace").src = `data:image/png;base64,${base64_lap_trace}`;
+
+                                let base64_performance_radar = response.performance_radar;
+                                document.getElementById("img-performance-radar").src = `data:image/png;base64,${base64_performance_radar}`;
+
+                                $('#text_feedback').text(response.performance_feedback);                                
+                            })
+                    }
+                })
+                .catch((error) => {
+                    showToast(error, 'text-bg-danger')
+                })
+        }
+    }
+
+    function showToast(msg, type) {
+        let toastLiveExample = document.getElementById('liveToast')
+
+        if ($('#liveToast').hasClass(type)) $('#liveToast').removeClass(type);
+
+        $('#liveToast').addClass(type);
+        $('#toast-body').text(msg);
+
+        let toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastLiveExample);
+        toastBootstrap.show()
+    }
+
+    async function loadAnalisysData(track, session, lap) {
+        return await window.pywebview.api.loadAnalisysData(track, session, lap)
+    }
+
+    async function getTrackTrainings(track) {
+        return await window.pywebview.api.getTrackTrainings(track);
+    }
+
+    async function getLapsToAnalisys(track, session) {
+        return await window.pywebview.api.getLaps(track, session);
+    }
+
+    async function makeLapAnalisys(track, session_training, session_analisys, selected_lap) {
+        return await window.pywebview.api.makeLapAnalisys(track, session_training, session_analisys, selected_lap)
     }
 
 </script>

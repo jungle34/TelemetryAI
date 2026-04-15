@@ -1,4 +1,6 @@
-import time
+import os
+import base64
+import urllib.parse
 import re
 import json
 import threading
@@ -8,6 +10,7 @@ from src.app.tools import TrackTranslator, SessionTypeTranslator, WeatherTransla
 
 from analisys.GroupData import F125_TelemetryConsolidated
 from analisys.John import John
+from analisys.Mary import Mary
 
 class Telemetry:
     def __init__(self, lock):
@@ -72,13 +75,39 @@ class Api:
             
         return lap_data
     
+    def hasTrainingData(self, track, session) -> bool:        
+        track_training = {}
+        with open(f"analisys/sanitazed_data/summary.jsonl", "r") as f:
+            for row in f:
+                row_data = json.loads(row)                
+                if (row_data['track'] == track and row_data['session'] == session):
+                    return True
+                
+        return False
+    
+    def counterTrackTrainingSessions(self, track):
+        counter = 0
+        with open(f"analisys/sanitazed_data/summary.jsonl", "r") as f:
+            for row in f:
+                row_data = json.loads(row)
+                if (row_data['track'] == track):
+                    counter += 1
+                    
+        return counter
+    
     def getSessionData(self, session, track):
         with open(f"laps/{track}/{session}/session.jsonl", "r", encoding='utf-8') as f:
             last_line = f.readlines()[-1]
             aux = json.loads(last_line)
             
+        with open(f"laps/{track}/{session}/participants.jsonl", "r", encoding='utf-8') as f:
+            last_line_participants = f.readlines()[-1]
+            aux_participants = json.loads(last_line_participants)
+            
         return {
             "session_id": session,
+            "is_trained": self.hasTrainingData(track, session),
+            "pilot_name": aux_participants['data']['name'],
             "datetime": aux['data']['datetime'], 
             "total_laps": aux['data']['totalLaps'],
             "sessionType": self.session_type_translator.translate(aux['data']['sessionType']),
@@ -118,6 +147,7 @@ class Api:
                 _tracks.append({
                     "track_id": int(matches[0]),
                     "track_label": self.track_translator.translate(int(matches[0])),
+                    "trained_sessions": self.counterTrackTrainingSessions(f"Track_{matches[0]}"),
                     "sessions": session_laps
                 })                        
         
@@ -151,10 +181,17 @@ class Api:
     
     def setModelTraining(self, track, session):        
         try:
-            analist = John(track, session)
-            return {"success": True}
-        except Exception as e:                        
-            raise Exception(str(e))
+            john = John(track=track, session=session, num_laps=3)
+            return john.runAll()
+        except Exception as e:
+            raise RuntimeError(e)
+        
+    def makeLapAnalisys(self, track, session_training, session_analisys, selected_lap):
+        try:
+            mary = Mary(track=track, session_training=session_training, session_analisys=session_analisys, lap_to_analize=int(selected_lap))
+            return mary.runAll()
+        except Exception as e:
+            raise RuntimeError(e)
     
     def getSanitazeSummary(self):        
         data = []
@@ -168,6 +205,53 @@ class Api:
                 })
                 
         return data
+    
+    def getTrackTrainings(self, track):
+        data = []
+        with open(f"analisys/sanitazed_data/summary.jsonl", "r", encoding="utf-8") as f:
+            for row in f:
+                row_data = json.loads(row)
+                
+                data.append({
+                    "track": row_data['track'],
+                    "track_label": self.track_translator.translate(int(row_data['track'].replace("Track_", ""))),
+                    "session_id": row_data['session'],
+                    "session": self.getSessionData(row_data['session'], row_data['track'])
+                })
+                
+        return data
+    
+    def get_asset_path(self, relative_path):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.join(base_dir, relative_path)
+        return "file://" + urllib.parse.quote(full_path.replace("\\", "/")).replace("/src/app", "")
+    
+    def loadAnalisysData(self, track, session, lap):
+        relative_path = f"analisys/models/{track}/{session}/{lap}"
+        # data_path = self.get_asset_path(relative_path)
+        
+        txt_feedback = ""
+        with open(f"{relative_path}/performance_feedback.txt", "r", encoding='utf-8') as file:
+            txt_feedback = file.read()
+            
+        lap_comparison = ""
+        with open(f"{relative_path}/lap_comparison.png", "rb") as f:
+            lap_comparison = base64.b64encode(f.read()).decode("utf-8")
+            
+        lap_trace = ""
+        with open(f"{relative_path}/lap_trace.png", "rb") as f1:
+            lap_trace = base64.b64encode(f1.read()).decode("utf-8")
+            
+        performance_radar = ""
+        with open(f"{relative_path}/performance_radar.png", "rb") as f2:
+            performance_radar = base64.b64encode(f2.read()).decode("utf-8")
+        
+        return {
+            "lap_comparison": lap_comparison,
+            "lap_trace": lap_trace,
+            "performance_radar": performance_radar,
+            "performance_feedback": txt_feedback
+        }
     
     
 # api = Api()
