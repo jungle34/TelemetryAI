@@ -17,7 +17,7 @@ Pode conter bugs, instabilidades e mudanças frequentes.
 - Faça algumas voltas no jogo e já irão aparecer na aba histórico;
 - Após concluir algumas sessões, vá até configurações->Treinamento do modelo ML e crie dados de treinamento do analista;
 - Com os dados treinados, vá até histórico e selecione uma sessão que não foi usada para treinamento e clique em analisar volta;
-- Selecione a volta que deseja analisar e espere os dados aparecerem na interface;
+- Na página de analise, selecione um dos treinamentos criados da mesma pista e selecione a volta que deseja analisar;
 
 > Voltas com entrada nos boxes podem gerar analises não muito confiáveis
 
