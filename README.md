@@ -1,4 +1,4 @@
-# 📦 Nome do Projeto
+# TelemetryAI
 
 Versão Alpha do software em Python com instalador automático.
 
