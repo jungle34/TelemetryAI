@@ -1,6 +1,6 @@
 # TelemetryAI
 
-Versão Alpha do software em Python com instalador automático.
+Analista de telemetria com machine learning
 
 ---
 
